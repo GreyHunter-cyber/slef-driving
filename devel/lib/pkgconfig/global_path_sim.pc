@@ -1,0 +1,8 @@
+prefix=/home/nvidia/iau_ros_legoloam/devel
+
+Name: global_path_sim
+Description: Description of global_path_sim
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: message_runtime roscpp rospy std_msgs

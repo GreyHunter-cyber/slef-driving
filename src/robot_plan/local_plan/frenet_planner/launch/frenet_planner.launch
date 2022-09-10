@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="frenet_planner" type="frenet_planner_node" name="frenet_planner_node" output="screen" respawn="true">
+    <param name="max_speed" value="10.8" /> <!--km/h-->
+    <param name="max_accel" value="2.0" /> <!--m/ss-->
+   <param name="max_curvature" value="1.0" /> <!--1/m-->
+    <param name="max_road_width" value="2.0" />
+    <param name="d_road_w" value="0.2" />
+    <param name="maxT" value="7.0" />
+    <param name="minT" value="7.0" />
+    <param name="dT" value="1.0" />
+    <param name="d_t_s" value="0.1" /> <!--目标速度采样间隔 [m/s]-->
+    <param name="n_s_sample" value="0" /> <!--sampling number -->
+    <param name="robot_radius" value="0.5" />
+
+    <param name="KOBS" value="0.0" />
+    <param name="KJ"  value="0.1" /><!--惩罚Jerk大的备选轨迹 -->
+    <param name="KT"  value="0.5" /><!--制动应当迅速，时间短 -->
+    <param name="KD"  value="2.0" /><!--目标状态不应偏离道路中心线太远 -->
+    <param name="KLAT" value="0.1" /><!--横向损失权重 -->
+    <param name="KLON" value="0.5" /><!--纵向损失权重 -->
+    <param name="KCON" value="3" /><!--一致性权重 -->
+
+    <param name="patch_width" value="60" />
+    <param name="patch_height" value="80" />
+    <param name="d_width" value="0.20" />
+    <param name="d_height" value="0.20" />
+    <param name="plan_rate" value="10"/>
+    <param name="collision_distance" value="10" /><!--障碍物距离 -->
+    
+    <param name="show_all_trajs" value="true" />
+    <param name="show_spline" value="false" />
+
+    <param name="height_from_lidar_to_ground" value="1.1" />
+  </node>
+</launch>

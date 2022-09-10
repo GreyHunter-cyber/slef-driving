@@ -1,0 +1,8 @@
+prefix=/home/nvidia/iau_ros_legoloam/install
+
+Name: decision_making
+Description: Description of decision_making
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

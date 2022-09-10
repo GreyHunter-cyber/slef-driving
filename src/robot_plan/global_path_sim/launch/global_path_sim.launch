@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="global_path_sim" type="global_path_sim_node" name="global_path_sim_node" output="screen">
+    <!--param name="global_path_csv" value="/home/zxkj/ws_jichuang/map/zxkj-garage-005b.csv" /--> <!--zxkj-garage-001n.csv-->
+    <param name="global_path_csv" value="/home/nvidia/iau_ros_legoloam/maps/haida1/trajactory.csv" />
+  </node>
+</launch>
+

@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+	<param name="/global_path_csv" value="/home/luoluolll/maps/mrd32/trajactory.csv" />
+  <node pkg="decision_making" type="decision_making_node" name="decision_making_node" output="screen"/>
+</launch>

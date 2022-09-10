@@ -1,0 +1,2 @@
+carTop:cloud_msgs:grid_msgs:iau_location:iau_ui:robot_imu/test_imu:robot_imu/yesense_driver:robot_lidar/rslidar:robot_lidar/rslidar_driver:robot_lidar/rslidar_msgs:robot_lidar/rslidar_pointcloud:robot_lidar/rslidar_sync:robot_lidar/velodyne_msgs:robot_plan/global_path_sim:robot_plan/local_plan/frenet_planner:robot_plan/path_follow/simple_follower:robot_plan/plan_msgs:runtime_manager
+-DCATKIN_DEVEL_PREFIX=/home/nvidia/iau_ros_legoloam/devel -DCMAKE_INSTALL_PREFIX=/home/nvidia/iau_ros_legoloam/install -G Unix Makefiles

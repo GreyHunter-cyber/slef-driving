@@ -1,0 +1,151 @@
+syntax = "proto2";
+
+// 机器人以 websocket server + protobuf 形式提供调用接口。
+// 响应形式为 客户端请求 - 机器人反馈，一次反馈对应一次请求，且
+// 允许多个客户端进行独立请求。
+
+// 请求的数据和反馈的数据均使用 protobuf 定义，然后通过 websocket 链路通信。
+// 2020.11.22
+// robot_client <--> server <--> app_client
+// 地图数据处理在robot_client中完成（坐标系变换、地图数据珊格化等）
+// app给server的消息，server将其转换成给决策模块的消息，减少server端的计算开销
+
+// 2020.10.28
+// 新增离线建图功能：APP端提供建图按钮，启动建图程序，建图完成后，点击上传。
+// 离线地图上传至服务器。后台获取数据后，进行制图操作，制作完成后上传至服务器。用户登录时，可以选择加载地图。
+
+// 用于遥控机器人的状态指令
+// Mode 用于指示如何控制车辆，分为遥控(mode=DRIVE，此时由 speed/angle 控制车辆）和
+// 非遥控（FREE/PAUSE/STOP，此时speed/angle应该被忽略，机器人应在接收到mode=FREE后退出
+// 遥控模式)。请仔细思索其中差异。
+message R2SDrive {
+    enum Mode {
+        FREE    = 0; // 自由模式，非遥控控制状态，此时由机器人自身决定机器人行为
+        PAUSE   = 1; // 暂停
+        STOP    = 2; // 停驻车，需要紧急停车时使用，处理逻辑与线速度/角度不同
+        DRIVE   = 3; // 遥控控制状态
+    }
+    required Mode   mode    =  1; // 控制模式
+    optional float  speed   =  2; // 机器人线速度，前向为正，后向为负, mode=DRIVE时才有意义
+    optional float  angle   =  3; // 机器人转向角，左正右负，mode=DRIVE时才有意义
+}
+
+// 场景点
+message MPoint{
+    required float x         = 1;
+    required float y         = 2;
+    required int32 attribute = 3;
+    required float m_speed   = 4;
+}
+
+message R2SMitionPoint{
+    repeated MPoint point = 1;
+}
+
+// 定位起点
+message R2SOriginPoint{
+    required float x = 1;
+    required float y = 2;
+    required float z = 3;
+}
+
+// 机器人地图栅格，笛卡尔坐标系栅格
+message R2SRobotMap {
+    enum Grid {
+        UNKOWN      = 0; // 栅格点是未知未探测的
+        FREE        = 1; // 栅格点是自由可通行的
+        OCCUPIED    = 2; // 栅格点被障碍物占据，无法通行
+        FEATURE     = 3; // 栅格点是地图采集的特征点
+    }
+    required double origin_x    =  1; // 栅格地图原点 x，单位 m
+    required double origin_y    =  2; // 栅格地图原点 y，单位 m
+    required int32  size        =  3; // 用于指示栅格方块大小， 单位 cm
+    required int32  grids_x     =  4; // x轴上的栅格数量
+    required int32  grids_y     =  5; // y轴上的栅格数量
+    required bytes  zgrids      =  6; // 经过 zlib 压缩后的栅格序列，其中值定义参考 enum Grid。
+                                      // 序列方向为从原点开始，x轴方向序列，然后y方向依次各行。
+    }   
+
+// 机器人位置方位，相对于地图原点定义
+message R2SRobotPos {
+    required float  offset_x    = 1; // 相对于地图原点的 x 偏移，单位 m
+    required float  offset_y    = 2; // 相对于地图原点的 y 偏移，单位 m
+    optional float  angle       = 3; // 可选的方向角度，相对于x轴逆时针递增，单位 rad
+}
+
+// 机器人轨迹
+message R2SRobotTrail {
+    repeated R2SRobotPos   trail   = 1; // 机器人轨迹点序列
+}
+
+message R2SRobotInfo {
+    required float speed   = 1; // 机器人行驶速度，单位 m/s
+    required float voltage = 2; // 机器人电压，用于显示续航 单位 V
+    required float cur_x   = 3; // 机器人当前位置，单位 m
+    required float cur_y   = 4; // 机器人当前位置，单位 m
+    required float cur_yaw = 5; // 机器人当前朝向，单位 rad
+    
+}
+
+message R2SMitionStatus{
+    required int32 mition_number = 1; // 当前场景点序号，为0时表示终点，9999表示尚未初始化
+    required bool  mition_finish = 2; // 当前场景点是否到达
+}
+
+message R2SRemoteControl{
+    required float speed      = 1;//遥控速度
+    required float angle      = 2;//遥控角度
+    optional float angle_velo = 3;//遥控角速度
+    optional float distance   = 4;//遥控距离
+}
+
+// 地图列表
+message R2SMapList{
+    repeated string mapname =1;
+}
+
+// 请求（机器人向服务器的发送的消息请求）
+// 第一次发送将初始全信息发送，后续根据反馈确定上传消息
+message R2SRequest {
+    required bytes          token     =  1; // token 标记，用于指示身份和权限鉴定
+    optional int32       upload_rate  =  2; // 可选的地图上传进度
+    optional R2SRobotPos    pos       =  3; // 可选的反馈的机器人位置
+    optional R2SRobotMap    map       =  4; // 可选的反馈的机器人栅格
+    optional R2SRobotTrail  trail     =  5; // 可选的反馈的机器人轨迹序列
+    optional R2SRobotInfo   status    =  6; // 可选的反馈的机器人状态信息
+    optional R2SMitionStatus mition   =  7; // 可选的机器人任务点状态  
+    optional R2SMapList        list              = 8; // 可选的机器人地图名称列表
+}
+
+// 反馈（服务器向机器人反馈的消息）
+message R2SResponse {
+     enum Wants {
+        NONE    =  0x00; // 什么数据都需要  
+        POS     =  0x01; // 机器人位置，方位
+        MAP     =  0x02; // 地图栅格
+        TRAIL   =  0x04; // 轨迹数据
+    };
+    enum a_Flag {
+        NOOP          = 0; // 无任何操作
+        POINT_APPLY   = 1; // 应用新的场景点
+        NAVIGATION    = 2; // 启动导航
+        INIT_ORIGIN   = 3; // 初始化定位起点
+        CREAT_MAP     = 4; // 开始创建地图
+        FINISH_MAP    = 5; // 完成建图
+        UPLOAD_MAP    = 6; // 上传地图
+        DOWNLOAD_MAP  = 7; // 下载地图
+    };
+    required int32         code     =  1; // 反馈代码，0 表示正常，其他值代表出现问题    
+    optional string        info     =  2; // 可选的 code 详细描述
+    optional int32         e_stop   =  3; // 急停
+    optional R2SRemoteControl remote   =  4; // 遥控指令
+    optional int32         c_flag   =  5; // control_flag 0 means free ，1 means pause ,2 means stop ,3 means remote
+    optional int32         a_flag   =  6; // action_flag  0 means none , 1 means apply mitionPoint ,2 means navigation
+    optional R2SMitionPoint   point    =  7; // 场景点信息
+    optional R2SOriginPoint   origin   =  8; // 可选的定位起点
+    optional bool          mition_f =  9; // 机器人向服务器报告当前场景点是否已到达     
+    required int32         wants    =  11; // 想要的数据
+    optional string      mapname    =   12;// 可选的地图名称
+}
+
+

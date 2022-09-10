@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/nvidia/iau_ros_legoloam/devel/setup.sh

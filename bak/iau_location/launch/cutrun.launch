@@ -1,0 +1,28 @@
+<launch>
+    
+    <!--- Sim Time -->
+    <param name="/x_op" value = "0.0" />
+    <param name="/y_op" value = "0.0" />
+    <param name="/z_op" value = "0.0" />
+    <param name="/roll_op" value = "0.0" />
+    <param name="/pitch_op" value = "0.0" />
+    <param name="/yaw_op" value = "0.0" />
+    <param name="/fileDirectory" value="/home/nvidia/iau_ros_legoloam/maps/haida1/" />
+    <param name="/USING_IMU_ODOM" value = "false" /><!--车速慢时不需要imu插值-->
+    <param name="/use_cut_map" value = "false" /><!--map太大需要分割-->
+    <param name="search_radius" value="80.0"/><!--分割半径-->
+
+    <!--- Run Rviz-->
+    <!--- TF -->
+    <node pkg="tf" type="static_transform_publisher" name="static_cloud_map_to_map"  args="0 0 0 1.570795   0        1.570795 /map    /static_cloud_map 10" />
+    
+    <node pkg="tf" type="static_transform_publisher" name="camera_init_to_map"  args="0 0 0 1.570795   0        1.570795 /map    /camera_init 10" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera" args="0 0 0 -1.570795 -1.570795 0        /camera /base_link   10" />
+    
+    <!--- LeGO-LOAM -->    
+    <node pkg="lego_loc" type="imageProjection2"    name="imageProjection2"    output="screen"/>
+    <node pkg="lego_loc" type="featureAssociation2" name="featureAssociation2" output="screen"/>
+    <node pkg="lego_loc" type="mapOptmization2"     name="mapOptmization2"     output="screen"/>
+    <node pkg="lego_loc" type="transformFusion2"    name="transformFusion2"    output="screen"/>
+    <node pkg="lego_loc" type="staticMap2"          name="staticMap2"          output="screen"/>
+</launch>

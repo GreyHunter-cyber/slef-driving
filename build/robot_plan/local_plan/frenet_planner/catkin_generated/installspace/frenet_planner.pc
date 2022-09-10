@@ -1,0 +1,8 @@
+prefix=/home/nvidia/iau_ros_legoloam/install
+
+Name: frenet_planner
+Description: Description of frenet_planner
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

@@ -1,0 +1,8 @@
+prefix=/home/nvidia/iau_ros_legoloam/install
+
+Name: carTop
+Description: Description of carTop
+Version: 0.0.0
+Cflags: -I${prefix}/include
+Libs: -L${prefix}/lib 
+Requires: message_runtime

@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="carTop" type="carTop" name="carTop" output="screen"/>
+  <node pkg="carTop" type="velTop" name="velTop" output="screen"/>
+</launch>
+

@@ -1,0 +1,143 @@
+syntax = "proto2";
+
+// 机器人以 websocket server + protobuf 形式提供调用接口。
+// 响应形式为 客户端请求 - 机器人反馈，一次反馈对应一次请求，且
+// 允许多个客户端进行独立请求。
+
+// 请求的数据和反馈的数据均使用 protobuf 定义，然后通过 websocket 链路
+// 通信。
+
+// 2020.7.21
+// 考虑到机器人控制器计算性能有限，建图效果差，取消协议中的开始建图、保存建图和取消建图。
+// 不再提供给用户通过APP建图的功能，建图统一由我们来处理。之前协议中的栅格地图始终为定位地图。
+// 补充场景点设置，场景点由规划负责匹配，由server负责场景点的存储和消息发送。
+// 场景点属性由x,y和attribute组成，目前attribute先简单分为停车（1）和不停车（0），后续如果有其他场景再进行扩充。
+
+// 2020.9.1
+// 任意点启动和停止的功能：需要通过app手动设置定位起点
+// 定位起点通过app在屏幕上进行选点，action 置为 INIT_ORIGIN ，类似于场景点做一个上传。
+
+// 用于遥控机器人的状态指令
+// Mode 用于指示如何控制车辆，分为遥控(mode=DRIVE，此时由 speed/angle 控制车辆）和
+// 非遥控（FREE/PAUSE/STOP，此时speed/angle应该被忽略，机器人应在接收到mode=FREE后退出
+// 遥控模式)。请仔细思索其中差异。
+message RobotDrive {
+    enum Mode {
+        FREE    = 0; // 自由模式，非遥控控制状态，此时由机器人自身决定机器人行为
+        PAUSE   = 1; // 暂停
+        STOP    = 2; // 停驻车，需要紧急停车时使用，处理逻辑与线速度/角度不同
+        DRIVE   = 3; // 遥控控制状态
+    }
+    required Mode   mode    =  1; // 控制模式
+    optional float  speed   =  2; // 机器人线速度，前向为正，后向为负, mode=DRIVE时才有意义
+    optional float  angle   =  3; // 机器人转向角，左正右负，mode=DRIVE时才有意义
+}
+
+// 场景点
+message MitionPoint{
+    required float x         = 1;
+    required float y         = 2;
+    required int32 attribute = 3;
+    required float m_speed   = 4;
+}
+
+// 定位起点
+message OriginPoint{
+    required float x = 1;
+    required float y = 2;
+    required float z = 3;
+}
+
+// 地图列表
+message MapList{
+    repeated string mapname =1;
+}
+
+// 请求
+message RobotRequest {
+    enum Wants {
+        NONE    =  0x00; // 什么数据都需要
+        POS     =  0x01; // 机器人位置，方位
+        MAP     =  0x02; // 地图栅格
+        TRAIL   =  0x04; // 轨迹数据
+    };
+    enum Action {
+        NOOP          = 0; // 无任何操作
+        POINT_APPLY   = 1; // 应用新的场景点
+        NAVIGATION    = 2; // 启动导航
+        INIT_ORIGIN   = 3; // 初始化定位起点
+        CREAT_MAP     = 4; // 开始创建地图
+        FINISH_MAP    = 5; // 完成建图
+        UPLOAD_MAP    = 6; // 上传地图
+        DOWNLOAD_MAP  = 7; // 下载地图
+        CHOICE_MAP     = 8; // 选择地图
+    }
+
+    required bytes       token     =  1; // token 标记，用于指示身份和权限鉴定
+    required int32       wants     =  2; // 客户端想请求的数据标识组合，参见 enum Wants 组合
+    required int32       action    =  3; // 操作指令，参见 enum Action
+    optional RobotDrive  drive     =  4; // 可选的遥控指令
+    repeated MitionPoint point     =  5; // 可选的场景点信息
+    optional OriginPoint origin    =  6; // 可选的定位起点
+    optional int32       confirm   =  7; // 可选的确认任务是否完成，0表示未完成
+    optional string      mapname    =   8;// 可选的地图名称
+    //optional int32     mapManage =  7; // 地图管理
+}
+
+// 机器人地图栅格，笛卡尔坐标系栅格
+message RobotMap {
+    enum Grid {
+        UNKOWN      = 0; // 栅格点是未知未探测的
+        FREE        = 1; // 栅格点是自由可通行的
+        OCCUPIED    = 2; // 栅格点被障碍物占据，无法通行
+        FEATURE     = 3; // 栅格点是地图采集的特征点
+    }
+    required double origin_x    =  1; // 栅格地图原点 x，单位 m
+    required double origin_y    =  2; // 栅格地图原点 y，单位 m
+    required int32  size        =  3; // 用于指示栅格方块大小， 单位 cm
+    required int32  grids_x     =  4; // x轴上的栅格数量
+    required int32  grids_y     =  5; // y轴上的栅格数量
+    required bytes  zgrids      =  6; // 经过 zlib 压缩后的栅格序列，其中值定义参考 enum Grid。
+                                      // 序列方向为从原点开始，x轴方向序列，然后y方向依次各行。
+    }   
+
+// 机器人位置方位，相对于地图原点定义
+message RobotPos {
+    required float  offset_x    = 1; // 相对于地图原点的 x 偏移，单位 m
+    required float  offset_y    = 2; // 相对于地图原点的 y 偏移，单位 m
+    optional float  angle       = 3; // 可选的方向角度，相对于x轴逆时针递增，单位 rad
+}
+
+// 机器人轨迹
+message RobotTrail {
+    repeated RobotPos   trail   = 1; // 机器人轨迹点序列
+}
+
+message RobotInfo {
+    required float speed   = 1; // 机器人行驶速度，单位 m/s
+    required float voltage = 2; // 机器人电压，用于显示续航 单位 V
+    required float cur_x   = 3; // 机器人当前位置，单位 m
+    required float cur_y   = 4; // 机器人当前位置，单位 m
+    required float cur_yaw = 5; // 机器人当前朝向，单位 rad
+    
+}
+
+message MitionStatus{
+    required int32 mition_number = 1; // 当前场景点序号，为0时表示终点，9999表示尚未初始化
+    required bool  mition_finish = 2; // 当前场景点是否到达
+}
+
+// 反馈
+message RobotResponse {
+    required int32       code    =  1; // 反馈代码，0 表示正常，其他值代表出现问题
+    optional string      info    =  2; // 可选的 code 详细描述
+    optional RobotPos    pos     =  3; // 可选的反馈的机器人位置
+    optional RobotMap    map     =  4; // 可选的反馈的机器人栅格
+    optional RobotTrail  trail   =  5; // 可选的反馈的机器人轨迹序列
+    optional MitionPoint point   =  6; // 可选的场景点信息
+    optional RobotInfo   status  =  7; // 可选的反馈的机器人状态信息
+    optional MitionStatus mition =  8; // 可选的机器人任务点状态 
+    optional MapList        list        = 9; // 可选的地图名称列表      
+}
+
+

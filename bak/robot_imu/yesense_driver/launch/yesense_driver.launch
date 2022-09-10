@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+  <node name="yesense_driver" pkg="yesense_driver" type="yesense_driver_node" output="screen" >
+    <param name="device" value="/dev/ttyUSB0" />
+    <param name="baud_rate" value="460800" />
+    <param name="imu_topic" value="/imu/data" />
+  </node>
+</launch>
